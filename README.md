@@ -1,43 +1,19 @@
 # ![Discord](https://img.shields.io/badge/Discord-Bot-7289DA?logo=discord\&logoColor=white) Bot Discord français multifonctions
 
-Bot Discord **multifonctions en français** avec commandes de **modération, informations, mini-jeux, gestion et fun**.
-Facile à configurer et à déployer sur GitHub, Railway, Replit, ou VPS.
+Un bot Discord multifonctions français développé avec Node.js et discord.js v14+. Facile à configurer et à déployer sur GitHub, Railway, Replit, ou VPS.
 
 ---
 
-## ⚡ Fonctionnalités
+## ⚙️ Fonctionnalités
 
-### Modération
-
-* `+ban` — Bannir un membre
-* `+kick` — Expulser un membre
-* `+mute` / `+unmute` — Gérer les mutes
-* `+clear` — Supprimer des messages
-* Système d’avertissements
-
-### Informations
-
-* `+userinfo` — Infos sur un membre
-* `+serverinfo` — Infos sur le serveur
-* `+ping` — Ping du bot
-* Statistiques diverses
-
-### Gestion
-
-* Gestion des rôles
-* Outils administrateurs
-* Commandes de serveur utiles
-
-### Mini-jeux
-
-* Jeux rapides dans le chat
-* Interactions entre membres
-
-### Fun
-
-* Commandes divertissantes
-* Réponses automatiques
-* Interactions amusantes
+* Commandes de modération (ban, kick, mute, warn, etc.)
+* Commandes d'information (userinfo, serverinfo, ping, etc.)
+* Mini-jeux (morpion, bataille navale, quiz, etc.)
+* Commandes fun (combat, claque, caresse, etc.)
+* Systèmes anti-raid et captcha
+* Attribution automatique de rôles selon le statut des utilisateurs
+* Support des commandes slash
+* Messages de bienvenue/départ
 
 ---
 
@@ -60,8 +36,8 @@ npm -v
 ### 2. Télécharger le projet
 
 ```bash
-git clone https://github.com/votre-repo/bot-discord-francais.git
-cd bot-discord-francais
+git clone https://github.com/votre-repo/Bot-Multifonctions-FR.git
+cd Bot-Multifonctions-FR
 ```
 
 Ou télécharger le projet en ZIP et extraire.
@@ -86,14 +62,13 @@ Le bot utilise **`config.js`** pour les paramètres :
 
 ```js
 module.exports = {
-  token: 'ton-token-ici',
-  prefix: '+',
-  embedColor: '#49ff02',
-  ownerId: 'ton-id-ici'
+  token: process.env.DISCORD_TOKEN || "ton-token-ici",
+  prefix: "+",
+  embedColor: "#49ff02",
+  ownerId: process.env.OWNER_ID || "ton-id-ici",
+  supportServerInvite: "https://discord.gg/tqxJPf4YFc",
 };
 ```
-
-Remplacez `ton-token-ici` par le token de votre bot.
 
 ---
 
