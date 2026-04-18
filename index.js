@@ -3,13 +3,17 @@ const {
   GatewayIntentBits,
   Partials,
   Collection,
-  EmbedBuilder
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
 } = require("discord.js");
+
 const fs = require("fs");
 const path = require("path");
 const config = require("./config");
 const guildConfig = require("./src/utils/guildConfig");
-const snipe = require('./src/commands/snipe');
+const snipe = require("./src/commands/snipe");
 
 const LOG_FILE = path.join(__dirname, "role_logs.txt");
 
@@ -19,7 +23,6 @@ function logAction(message) {
   console.log(line.trim());
   fs.appendFile(LOG_FILE, line, () => {});
 }
-
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -27,9 +30,9 @@ const client = new Client({
     GatewayIntentBits.GuildPresences,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildVoiceStates
+    GatewayIntentBits.GuildVoiceStates,
   ],
-  partials: [Partials.GuildMember]
+  partials: [Partials.GuildMember],
 });
 
 client.commands = new Collection();
@@ -39,69 +42,164 @@ client.config = config;
 
 snipe.init(client);
 
-require('./src/structure/commandHandler')(client);
-require('./src/structure/slashCommandHandler')(client);
-require('./src/structure/eventHandler')(client);
+require("./src/structure/commandHandler")(client);
+require("./src/structure/slashCommandHandler")(client);
+require("./src/structure/eventHandler")(client);
 
-// ===== STATUT (rôle basé sur le statut perso) =====
+const invitesCache = new Map();
+
+async function findUsedInvite(guild) {
+  if (!guild) return null;
+
+  let newInvites;
+  try {
+    newInvites = await guild.invites.fetch();
+  } catch {
+    return null;
+  }
+
+  const cached = invitesCache.get(guild.id);
+  let used = null;
+
+  if (cached) {
+    newInvites.forEach((inv) => {
+      const oldUses = cached.get(inv.code) || 0;
+      if (inv.uses > oldUses) used = inv;
+    });
+  }
+
+  invitesCache.set(guild.id, new Map(newInvites.map((i) => [i.code, i.uses])));
+  return used;
+}
+
+async function getBotAdder(guild, botId) {
+  try {
+    const logs = await guild.fetchAuditLogs({
+      type: 28,
+      limit: 5,
+    });
+
+    const entry = logs.entries.find((e) => e.target?.id === botId);
+    return entry?.executor || null;
+  } catch {
+    return null;
+  }
+}
+
+client.once("ready", async () => {
+  client.guilds.cache.forEach(async (guild) => {
+    try {
+      const invites = await guild.invites.fetch();
+
+      invitesCache.set(guild.id, new Map(invites.map((i) => [i.code, i.uses])));
+    } catch {
+      invitesCache.set(guild.id, new Map());
+    }
+  });
+});
+
 client.on("presenceUpdate", async (_, newPresence) => {
   const member = newPresence?.member;
   if (!member || !member.guild) return;
+
   if (client.checkMember) {
     const cfg = guildConfig.getAll(member.guild.id);
     await client.checkMember(member, cfg).catch(() => {});
   }
 });
 
-// ===== ARRIVÉE =====
-client.on('guildMemberAdd', async (member) => {
+client.on("guildMemberAdd", async (member) => {
   const cfg = guildConfig.getAll(member.guild.id);
+  const createdAt = member.user.createdAt;
+  const now = new Date();
+  const diffDays = Math.floor((now - createdAt) / (1000 * 60 * 60 * 24));
+  const diffYears = Math.floor(diffDays / 365);
+  const ageText = diffYears > 0 ? `${diffYears} ans` : `${diffDays} jours`;
+  const memberCount = member.guild.memberCount;
+  
+  let inviterText = "Invitation inconnue";
 
+  if (member.user.bot) {
+    const adder = await getBotAdder(member.guild, member.id);
+    inviterText = adder
+      ? `Bot ajouté par **${adder.tag}**`
+      : "Bot ajouté (source inconnue)";
+  } else {
+    const usedInvite = await findUsedInvite(member.guild);
+    inviterText = usedInvite
+      ? `Invité par **${usedInvite.inviter.tag}**`
+      : "Invitation inconnue";
+  }
+  const welcomeEmbed = new EmbedBuilder()
+    .setColor("#00ff00")
+    .setTitle("👋 Nouveau membre")
+    .setDescription(
+      `**${member} vient de nous rejoindre**\n\n` +
+        `Compte créé il y a **${ageText}**\n` +
+        `${inviterText}`,
+    )
+    .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
+    .setFooter({
+      text: member.guild.name,
+      iconURL: member.guild.iconURL({ dynamic: true }),
+    });
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("member_count")
+      .setLabel(`👥 ${memberCount} membres`)
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(true),
+  );
   if (cfg.welcomeChannelId) {
-    const welcomeChannel = member.guild.channels.cache.get(cfg.welcomeChannelId);
-    if (welcomeChannel) {
-      const memberCount = member.guild.memberCount;
-      const welcomeEmbed = new EmbedBuilder()
-        .setColor('#00ff00')
-        .setTitle('👋 Un nouveau membre rejoint le serveur !')
-        .setDescription(`Bienvenue ${member} ! 🥳\nTu es maintenant l'un des **${memberCount} membres** !`)
-        .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
-        .setFooter({ text: member.guild.name, iconURL: member.guild.iconURL({ dynamic: true }) });
-      welcomeChannel.send({ embeds: [welcomeEmbed] }).catch(() => {});
+    const channel = member.guild.channels.cache.get(cfg.welcomeChannelId);
+    if (channel) {
+      channel
+        .send({
+          embeds: [welcomeEmbed],
+          components: [row],
+        })
+        .catch(() => {});
     }
   }
-
   if (cfg.logChannelId) {
     const logChannel = member.guild.channels.cache.get(cfg.logChannelId);
     if (logChannel) {
-      logChannel.send(`📥 ${member} a rejoint le serveur !`).catch(() => {});
+      logChannel.send(`📥 ${member} a rejoint le serveur`).catch(() => {});
     }
   }
 });
 
-// ===== DÉPART =====
-client.on('guildMemberRemove', async (member) => {
+client.on("guildMemberRemove", async (member) => {
   const cfg = guildConfig.getAll(member.guild.id);
   if (!cfg.logChannelId) return;
+
   const logChannel = member.guild.channels.cache.get(cfg.logChannelId);
   if (!logChannel) return;
+
   const memberCount = member.guild.memberCount;
+
   const leaveEmbed = new EmbedBuilder()
-    .setColor('#ff0000')
+    .setColor("#ff0000")
     .setTitle(`${member.user.tag} nous a quitté...`)
     .setDescription(`Il reste **${memberCount} membres** sur le serveur.`)
     .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
-    .setFooter({ text: member.guild.name, iconURL: member.guild.iconURL({ dynamic: true }) });
+    .setFooter({
+      text: member.guild.name,
+      iconURL: member.guild.iconURL({ dynamic: true }),
+    });
+
   logChannel.send({ embeds: [leaveEmbed] }).catch(() => {});
 });
 
-// ===== LOGS GLOBAUX MESSAGES =====
 function formatLog(type, message, extra = "") {
   const date = new Date().toISOString();
   const guildName = message.guild ? message.guild.name : "DM";
   const author = message.author ? message.author.tag : "Inconnu";
   const content = message.content || "[Pas de contenu]";
-  console.log(`[${date}] [${type}] [${guildName}] ${author} : ${content} ${extra}`);
+
+  console.log(
+    `[${date}] [${type}] [${guildName}] ${author} : ${content} ${extra}`,
+  );
 }
 
 client.on("messageCreate", (message) => {
@@ -116,46 +214,47 @@ client.on("messageDelete", (message) => {
 
 client.on("messageUpdate", (oldMessage, newMessage) => {
   if (!newMessage.author || newMessage.author.bot) return;
+
   const oldContent = oldMessage.content || "[Pas de contenu]";
   const newContent = newMessage.content || "[Pas de contenu]";
   const date = new Date().toISOString();
   const guildName = newMessage.guild ? newMessage.guild.name : "DM";
   const author = newMessage.author.tag;
-  console.log(`[${date}] [MODIFIÉ] [${guildName}] ${author}\nAncien : ${oldContent}\nNouveau : ${newContent}`);
+
+  console.log(
+    `[${date}] [MODIFIÉ] [${guildName}] ${author}\nAncien : ${oldContent}\nNouveau : ${newContent}`,
+  );
 });
 
-// ===== MESSAGE DEPUIS TERMINAL =====
-process.stdin.setEncoding('utf8');
+process.stdin.setEncoding("utf8");
 process.stdin.resume();
-process.stdin.on('data', async (data) => {
+
+process.stdin.on("data", async (data) => {
   const message = data.toString().trim();
   if (!message) return;
+
   try {
-    const channel = await client.channels.fetch('1466007980569919636');
-    if (!channel) { logAction('Salon introuvable pour message terminal'); return; }
+    const channel = await client.channels.fetch("1466007980569919636");
+    if (!channel) return logAction("Salon introuvable");
+
     await channel.send(message);
-    console.log('Message envoyé :', message);
   } catch (err) {
-    console.error('Erreur envoi message terminal :', err);
+    console.error(err);
   }
 });
 
-// ===== ERREURS =====
-process.on('unhandledRejection', (reason) => {
+process.on("unhandledRejection", (reason) => {
   logAction(`Rejet non géré : ${reason}`);
 });
 
-process.on('SIGTERM', () => {
-  logAction('Bot arrêté (SIGTERM)');
+process.on("SIGINT", () => {
   client.destroy();
   process.exit(0);
 });
 
-process.on('SIGINT', () => {
-  logAction('Bot arrêté (SIGINT)');
+process.on("SIGTERM", () => {
   client.destroy();
   process.exit(0);
 });
 
-// ===== LOGIN =====
 client.login(config.token);
