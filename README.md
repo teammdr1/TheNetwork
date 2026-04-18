@@ -36,8 +36,8 @@ npm -v
 ### 2. Télécharger le projet
 
 ```bash
-git clone https://github.com/votre-repo/Bot-Multifonctions-FR.git
-cd Bot-Multifonctions-FR
+git clone https://github.com/votre-repo/Discord-Bot-Multifonctions-FR.git
+cd Discord-Bot-Multifonctions-FR
 ```
 
 Ou télécharger le projet en ZIP et extraire.
