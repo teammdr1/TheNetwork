@@ -116,7 +116,7 @@ client.on("guildMemberAdd", async (member) => {
   const diffYears = Math.floor(diffDays / 365);
   const ageText = diffYears > 0 ? `${diffYears} ans` : `${diffDays} jours`;
   const memberCount = member.guild.memberCount;
-  
+
   let inviterText = "Invitation inconnue";
 
   if (member.user.bot) {
