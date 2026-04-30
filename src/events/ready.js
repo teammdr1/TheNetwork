@@ -6,7 +6,8 @@ const guildConfig = require('../utils/guildConfig');
 const LOG_FILE = path.join(__dirname, '../../role_logs.txt');
 
 const statuses = [
-  "+help"
+  "+help",
+  "🚀 Version 3.2.0"
 ];
 let currentStatus = 0;
 
