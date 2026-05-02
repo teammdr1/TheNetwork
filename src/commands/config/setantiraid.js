@@ -4,7 +4,7 @@ const {
     TextDisplayBuilder,
     SeparatorBuilder,
 } = require('discord.js');
-const guildConfig = require('../utils/guildConfig');
+const guildConfig = require('../../utils/guildConfig');
 
 module.exports = {
     name: 'setantiraid',
