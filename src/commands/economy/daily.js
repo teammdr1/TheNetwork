@@ -1,7 +1,17 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const {
+  MessageFlags,
+  ContainerBuilder,
+  TextDisplayBuilder,
+  SeparatorBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle
+} = require('discord.js');
+
 const economy = require('../../utils/economy');
 
-const DAILY_COOLDOWN = 24 * 60 * 60 * 1000; // 24 heures
+const DAILY_COOLDOWN = 24 * 60 * 60 * 1000;
+
 const DAILY_REWARDS = [
   { amount: 100, emoji: '🥉', name: 'Bronze' },
   { amount: 250, emoji: '🥈', name: 'Argent' },
@@ -20,85 +30,127 @@ const STREAK_BONUSES = [
 module.exports = {
   name: 'daily',
   description: 'Récupère ta récompense quotidienne.',
-  async execute(client, message, args) {
+
+  async execute(client, message) {
     const userData = economy.getUserData(message.author.id);
+
     const now = Date.now();
     const lastDaily = userData.lastDaily || 0;
-    const timeDiff = now - lastDaily;
 
-    // Vérifier si c'est le bon moment
-    if (timeDiff < DAILY_COOLDOWN) {
-      const remaining = DAILY_COOLDOWN - timeDiff;
-      const hours = Math.floor(remaining / (1000 * 60 * 60));
-      const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+    // ── cooldown ──
+    if (now - lastDaily < DAILY_COOLDOWN) {
+      const remaining = DAILY_COOLDOWN - (now - lastDaily);
+      const h = Math.floor(remaining / 3600000);
+      const m = Math.floor((remaining % 3600000) / 60000);
 
-      const embed = new EmbedBuilder()
-        .setColor('#ff0000')
-        .setTitle('⏰ Récompense déjà récupérée')
-        .setDescription(`Tu dois attendre **${hours}h ${minutes}min** avant de récupérer ta prochaine récompense quotidienne.`)
-        .setFooter({ text: 'Reviens plus tard !' });
+      const container = new ContainerBuilder()
+        .setAccentColor(0xff0000);
 
-      return message.channel.send({ embeds: [embed] });
-    }
-
-    // Calculer la streak
-    const yesterday = now - (24 * 60 * 60 * 1000);
-    const isStreakMaintained = lastDaily >= yesterday - (2 * 60 * 60 * 1000); // Tolérance de 2h
-    const currentStreak = isStreakMaintained ? (userData.dailyStreak || 0) + 1 : 1;
-
-    // Sélectionner une récompense aléatoire
-    const reward = DAILY_REWARDS[Math.floor(Math.random() * DAILY_REWARDS.length)];
-
-    let totalAmount = reward.amount;
-    let streakBonus = 0;
-
-    // Vérifier les bonus de streak
-    for (const bonus of STREAK_BONUSES) {
-      if (currentStreak >= bonus.streak) {
-        streakBonus = bonus.bonus;
-        totalAmount += bonus.bonus;
-      }
-    }
-
-    // Ajouter l'argent
-    economy.addCash(message.author.id, totalAmount);
-    economy.updateStats(message.author.id, 'dailyCount', 1);
-
-    // Mettre à jour lastDaily et dailyStreak
-    const updatedUser = economy.getUserData(message.author.id);
-    updatedUser.lastDaily = now;
-    updatedUser.dailyStreak = currentStreak;
-    economy.updateUser(message.author.id, updatedUser);
-
-    const embed = new EmbedBuilder()
-      .setColor('#00ff00')
-      .setTitle('🎁 Récompense quotidienne récupérée !')
-      .setDescription(`${reward.emoji} Tu as gagné **${reward.amount.toLocaleString()} bobux** avec la récompense **${reward.name}** !`)
-      .addFields(
-        { name: '🔥 Série actuelle', value: `${currentStreak} jour(s)`, inline: true },
-        { name: '💰 Total gagné', value: `${totalAmount.toLocaleString()} bobux`, inline: true },
-        { name: '⏰ Prochaine récompense', value: 'Dans 24 heures', inline: true }
+      container.addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(
+          `## ⏰ Daily déjà récupéré`
+        )
       );
 
-    if (streakBonus > 0) {
-      const bonusInfo = STREAK_BONUSES.find(b => b.streak <= currentStreak);
-      embed.addFields({
-        name: '🎯 Bonus de série',
-        value: `+${streakBonus.toLocaleString()} bobux (${bonusInfo.name})`,
-        inline: false
+      container.addSeparatorComponents(
+        new SeparatorBuilder().setDivider(true)
+      );
+
+      container.addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(
+          `Tu dois attendre **${h}h ${m}min** avant de récupérer ta récompense.`
+        )
+      );
+
+      return message.channel.send({
+        components: [container],
+        flags: MessageFlags.IsComponentsV2
       });
     }
 
-    embed.setFooter({ text: `Total de récompenses quotidiennes: ${economy.getUserStats(message.author.id).dailyCount}` });
+    // ── streak ──
+    const yesterday = now - DAILY_COOLDOWN;
+    const maintained = lastDaily >= yesterday - 7200000;
+    const streak = maintained ? (userData.dailyStreak || 0) + 1 : 1;
 
+    const reward = DAILY_REWARDS[Math.floor(Math.random() * DAILY_REWARDS.length)];
+
+    let total = reward.amount;
+    let bonus = 0;
+
+    for (const b of STREAK_BONUSES) {
+      if (streak >= b.streak) {
+        bonus = b.bonus;
+        total += b.bonus;
+      }
+    }
+
+    // ── update economy ──
+    economy.addCash(message.author.id, total);
+    economy.updateStats(message.author.id, 'dailyCount', 1);
+
+    const updated = economy.getUserData(message.author.id);
+    updated.lastDaily = now;
+    updated.dailyStreak = streak;
+    economy.updateUser(message.author.id, updated);
+
+    const container = new ContainerBuilder()
+      .setAccentColor(0x00ff00);
+
+    // ── title ──
+    container.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(
+        `## 🎁 Daily récupéré !`
+      )
+    );
+
+    container.addSeparatorComponents(
+      new SeparatorBuilder().setDivider(true)
+    );
+
+    // ── reward ──
+    container.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(
+        `${reward.emoji} **${reward.name}**\n` +
+        `💰 Gain : **${reward.amount.toLocaleString()} bobux**`
+      )
+    );
+
+    if (bonus > 0) {
+      container.addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(
+          `🔥 Bonus streak : **+${bonus.toLocaleString()} bobux**`
+        )
+      );
+    }
+
+    container.addSeparatorComponents(
+      new SeparatorBuilder().setDivider(true)
+    );
+
+    // ── stats ──
+    container.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(
+        `📊 Série : **${streak} jour(s)**\n` +
+        `💎 Total gagné : **${total.toLocaleString()} bobux**\n` +
+        `⏰ Prochain daily : <t:${Math.floor((now + DAILY_COOLDOWN) / 1000)}:R>`
+      )
+    );
+
+    // ── button (disabled info) ──
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
-        .setCustomId('claim_daily_again')
-        .setLabel('🎁 Récupérer à nouveau')
-        .setStyle(ButtonStyle.Primary)
+        .setCustomId('daily_claim')
+        .setLabel('🎁 Daily récupéré')
+        .setStyle(ButtonStyle.Secondary)
         .setDisabled(true)
     );
 
-    await message.channel.send({ embeds: [embed], components: [row] });
+    container.addActionRowComponents(row);
+
+    return message.channel.send({
+      components: [container],
+      flags: MessageFlags.IsComponentsV2
+    });
   }
 };
