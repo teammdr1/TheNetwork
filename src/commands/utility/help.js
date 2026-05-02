@@ -3,13 +3,14 @@ const config = require('../../../config.js');
 const guildConfig = require('../../utils/guildConfig');
 
 const categoryNames = {
-  admin: '⚔️・Modération',
+  admin: '⚔️・Moderation',
   avatar: '🎨・Avatars',
   backup: '💾・Backups',
-  config: '🛡️・Sécurité',
+  config: '🛡️・Securite',
   economy: '💰・Economie',
   fun: '🎉・Fun',
   games: '🎮・Jeux',
+  giveaway: '🎁・Giveaways',
   info: '🔍・Informations',
   music: '🎵・Musique',
   other: '🔧・Autres',
