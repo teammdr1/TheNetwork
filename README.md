@@ -1,154 +1,169 @@
-# ![Discord](https://img.shields.io/badge/Discord-Bot-7289DA?logo=discord\&logoColor=white) Bot Discord français multifonctions
+# 🤖 Noob Bot - Bot Discord Multifonctions
 
-Un bot Discord multifonctions français développé avec Node.js et discord.js v14+. Facile à configurer et à déployer sur GitHub, Railway, Replit, ou VPS.
+[![Discord](https://img.shields.io/badge/Discord-Bot-7289DA?logo=discord&logoColor=white)](https://discord.gg/tqxJPf4YFc)
+[![Node.js](https://img.shields.io/badge/Node.js-18+-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![Discord.js](https://img.shields.io/badge/Discord.js-v14-5865F2?logo=discord&logoColor=white)](https://discord.js.org/)
 
----
-
-## ⚙️ Fonctionnalités
-
-* Commandes de modération (ban, kick, mute, warn, etc.)
-* Commandes d'information (userinfo, serverinfo, ping, etc.)
-* Mini-jeux (morpion, bataille navale, quiz, etc.)
-* Commandes fun (combat, claque, caresse, etc.)
-* Systèmes anti-raid et captcha
-* Attribution automatique de rôles selon le statut des utilisateurs
-* Support des commandes slash
-* Messages de bienvenue/départ
+Un bot Discord français ultra-complet avec modération avancée, économie, musique, tickets et bien plus. Facile à déployer et configurer.
 
 ---
 
-## 🚀 Installation
+## ✨ Fonctionnalités Principales
 
-### 1. Prérequis
+### 🛡️ Modération Avancée
+- Anti-raid automatique avec captcha
+- Système de sanctions complet (ban, kick, mute, warn)
+- Logs détaillés des actions
+- Protection contre les raids et spams
 
-* Node.js **v18 ou supérieur**
-* npm
+### 💰 Système Économique
+- Balance personnelle et bancaire
+- Récompenses quotidiennes (`+daily`)
+- Casino intégré (coinflip, slots, roulette)
+- Leaderboard des plus riches
+- Système de paiement entre utilisateurs
 
-Vérifiez :
+### 🎵 Musique & Divertissement
+- Lecteur audio complet (YouTube, SoundCloud)
+- Playlist management
+- Commandes fun et mini-jeux
+- Avatars personnalisés et interactions sociales
+
+### 🎫 Support & Tickets
+- Système de tickets personnalisable
+- Catégorisation automatique
+- Rôles de support dédiés
+- Interface intuitive
+
+---
+
+## 🚀 Installation Rapide
+
+### Prérequis
+- **Node.js v18+** et **npm**
+- Un bot Discord (créé sur [Discord Developer Portal](https://discord.com/developers/applications))
+
+### Installation
 
 ```bash
-node -v
-npm -v
-```
+# Cloner le repo
+git clone https://github.com/votre-repo/noob-bot.git
+cd noob-bot
 
----
-
-### 2. Télécharger le projet
-
-```bash
-git clone https://github.com/votre-repo/Discord-Bot-Multifonctions-FR.git
-cd Discord-Bot-Multifonctions-FR
-```
-
-Ou télécharger le projet en ZIP et extraire.
-
----
-
-### 3. Installer les dépendances
-
-```bash
+# Installer les dépendances
 npm install
+
+# Configurer le bot
+# Éditez config.js avec votre token Discord
 ```
 
-Dépendance principale :
+### Configuration
 
-* discord.js
-
----
-
-## ⚙️ Configuration
-
-Le bot utilise **`config.js`** pour les paramètres :
+Modifiez `config.js` :
 
 ```js
 module.exports = {
-  token: process.env.DISCORD_TOKEN || "ton-token-ici",
+  token: "VOTRE_TOKEN_DISCORD",
   prefix: "+",
   embedColor: "#49ff02",
-  ownerId: process.env.OWNER_ID || "ton-id-ici",
-  supportServerInvite: "https://discord.gg/tqxJPf4YFc",
+  ownerId: "VOTRE_ID_DISCORD",
+  supportServerInvite: "https://discord.gg/votre-serveur"
 };
 ```
 
----
-
-## 🛠 Création du bot Discord
-
-1. Allez sur : Discord Developer Portal
-2. Créez une **application**.
-3. Dans **Bot**, cliquez sur **Add Bot** et copiez le **token**.
-4. Activez les **intents** nécessaires :
-
-   * MESSAGE CONTENT INTENT
-   * SERVER MEMBERS INTENT
-
----
-
-## 🔗 Inviter le bot
-
-Dans **OAuth2 → URL Generator** :
-
-* Cochez `bot`
-* Permissions recommandées : **Administrator**
-* Minimum : Manage Messages, Kick Members, Ban Members, Manage Roles
-
-Générez l’URL et invitez le bot sur votre serveur.
-
----
-
-## ▶️ Lancer le bot
+### Lancement
 
 ```bash
 node index.js
 ```
 
-Le bot sera en ligne et prêt à utiliser les commandes avec le préfixe `+`.
+Le bot sera en ligne !
 
 ---
 
-## ☁️ Hébergement (24/7)
-
-### Gratuit
-
-* Replit
-* Railway
-* Render
-
-### VPS / Cloud
-
-* OVHcloud
-* Hetzner
-* DigitalOcean
-
----
-
-## 🗂 Structure du projet
+## 🗂 Structure du Projet
 
 ```
-├── index.js              # Main entry point
-├── config.js             # Configuration (reads from env vars)
-├── version.js            # Version tracking
-├── data/                 # JSON data storage
+├── index.js              # Point d'entrée principal
+├── config.js             # Configuration du bot
+├── version.js            # Gestion des versions
+├── data/                 # Stockage JSON (économie, tickets, etc.)
 └── src/
-    ├── commands/         # Prefix commands (+help, +ban, etc.)
-    ├── events/           # Discord event listeners
-    ├── slashCommands/    # Slash commands
-    ├── structure/        # Command/event handlers
-    └── utils/            # Utility functions
+    ├── assets/         # Images et polices d'écritures
+    ├── commands/         # Commandes préfixées
+    ├── slashCommands/    # Commandes slash
+    ├── events/           # Gestionnaires d'événements
+    ├── structure/        # Handlers principaux
+    └── utils/            # Fonctions utilitaires
 ```
 
 ---
 
-## 📌 Contribution
+## ☁️ Déploiement 24/7
 
-Contributions bienvenues :
+### Plateformes Gratuites
+- **Railway** : Déploiement automatique depuis GitHub
+- **Render** : Support Node.js natif
+- **Replit** : Édition en ligne avec déploiement
 
-1. Fork du projet
-2. Créer une branche
-3. Pull Request
+### VPS/Cloud
+- **OVHcloud** : Serveurs français performants
+- **Hetzner** : Excellent rapport qualité/prix
+- **DigitalOcean** : Droplets avec monitoring
+
+### Variables d'environnement
+```bash
+DISCORD_TOKEN=votre_token
+OWNER_ID=votre_id
+PORT=3000
+```
+
+---
+
+## 📚 Commandes Disponibles
+
+### Modération
+- `+ban @user [raison]` - Bannir un utilisateur
+- `+kick @user [raison]` - Expulser un utilisateur
+- `+mute @user [durée]` - Muter un utilisateur
+- `+warn @user [raison]` - Avertir un utilisateur
+
+### Économie
+- `+balance` - Voir sa balance
+- `+daily` - Récompense quotidienne
+- `+pay @user montant` - Payer un utilisateur
+- `+leaderboard` - Classement des plus riches
+
+### Musique
+- `+play [url/titre]` - Jouer de la musique
+- `+skip` - Passer à la piste suivante
+- `+queue` - Voir la file d'attente
+- `+stop` - Arrêter la musique
+
+### Utilitaires
+- `+help` - Liste des commandes
+- `+ping` - Latence du bot
+- `+serverinfo` - Infos du serveur
+- `+userinfo @user` - Infos d'un utilisateur
+
+---
+
+## 🤝 Contribution
+
+Les contributions sont les bienvenues !
+
+1. **Fork** le projet
+2. Créez une **branche** (`git checkout -b feature/AmazingFeature`)
+3. **Commit** vos changements (`git commit -m 'Add some AmazingFeature'`)
+4. **Push** vers la branche (`git push origin feature/AmazingFeature`)
+5. Ouvrez une **Pull Request**
 
 ---
 
 ## 📄 Licence
 
-Projet libre d'utilisation et de modification.
+Ce projet est sous licence MIT - voir le fichier [LICENSE](LICENSE) pour plus de détails.
+
+---
+
+*Développé avec ❤️ pour la communauté Discord francophone*
