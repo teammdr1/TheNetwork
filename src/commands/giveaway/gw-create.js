@@ -1,4 +1,14 @@
-const { PermissionsBitField } = require('discord.js');
+const {
+    PermissionsBitField,
+    MessageFlags,
+    ContainerBuilder,
+    TextDisplayBuilder,
+    SeparatorBuilder,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle,
+} = require('discord.js');
+
 const guildConfig = require('../../utils/guildConfig');
 const gw = require('../../utils/giveawayManager');
 
@@ -8,85 +18,193 @@ function isManager(member, gcfg) {
     return mgr.some(r => member.roles.cache.has(r));
 }
 
+// ─────────────────────────────────────────────
+// CONTAINER WIZARD
+// ─────────────────────────────────────────────
+function buildWizardContainer(draft) {
+    const container = new ContainerBuilder()
+        .setAccentColor(0x2B2D31);
+
+    container.addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(
+            '## 🎉 Giveaway Creator\n' +
+            'Configure ton giveaway étape par étape.'
+        )
+    );
+
+    container.addSeparatorComponents(
+        new SeparatorBuilder().setDivider(true)
+    );
+
+    container.addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(
+            `🎁 **Prix :** ${draft.prize || '*Non défini*'}\n` +
+            `⏱️ **Durée :** ${draft.duration || '*Non définie*'}\n` +
+            `👥 **Gagnants :** ${draft.winners || 1}\n` +
+            `📡 **Salon :** ${draft.channelId ? `<#${draft.channelId}>` : '*Non défini*'}`
+        )
+    );
+
+    container.addSeparatorComponents(
+        new SeparatorBuilder().setDivider(true)
+    );
+
+    container.addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(
+            '-# Utilise les boutons pour configurer le giveaway.'
+        )
+    );
+
+    return container;
+}
+
+// ─────────────────────────────────────────────
+// BOUTONS WIZARD
+// ─────────────────────────────────────────────
+function buildWizardRows(disabled = false) {
+    return [
+        new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId('gw_wizard_prize')
+                .setLabel('🎁 Prix')
+                .setStyle(ButtonStyle.Primary)
+                .setDisabled(disabled),
+
+            new ButtonBuilder()
+                .setCustomId('gw_wizard_duration')
+                .setLabel('⏱️ Durée')
+                .setStyle(ButtonStyle.Primary)
+                .setDisabled(disabled),
+
+            new ButtonBuilder()
+                .setCustomId('gw_wizard_winners')
+                .setLabel('👥 Gagnants')
+                .setStyle(ButtonStyle.Primary)
+                .setDisabled(disabled)
+        ),
+
+        new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId('gw_wizard_channel')
+                .setLabel('📡 Salon')
+                .setStyle(ButtonStyle.Secondary)
+                .setDisabled(disabled),
+
+            new ButtonBuilder()
+                .setCustomId('gw_wizard_start')
+                .setLabel('🚀 Lancer')
+                .setStyle(ButtonStyle.Success)
+                .setDisabled(disabled),
+
+            new ButtonBuilder()
+                .setCustomId('gw_wizard_cancel')
+                .setLabel('✖ Annuler')
+                .setStyle(ButtonStyle.Danger)
+                .setDisabled(disabled)
+        )
+    ];
+}
+
+// ─────────────────────────────────────────────
+// COMMANDE
+// ─────────────────────────────────────────────
 module.exports = {
     name: 'gw-create',
-    description: 'Crée un giveaway de façon interactive ou rapide.',
+    description: 'Créer un giveaway (V2 + rapide + wizard)',
+
     async execute(client, message, args) {
         const gcfg = guildConfig.getAll(message.guild.id);
+
         if (!isManager(message.member, gcfg)) {
-            return message.reply('❌ Vous devez avoir la permission **Gérer le serveur** ou être gestionnaire de giveaways.');
+            return message.reply(
+                '❌ Permission requise : **Gérer le serveur** ou rôle gestionnaire giveaway.'
+            );
         }
 
-        // Mode rapide : +gw-create <durée> <gagnants> <prix>
+        // ─────────────────────────────
+        // MODE RAPIDE
+        // ─────────────────────────────
         if (args.length >= 3) {
             const durationMs = gw.parseDuration(args[0]);
             const winnersCount = parseInt(args[1]);
             const prize = args.slice(2).join(' ');
 
-            if (!durationMs) return message.reply('❌ Durée invalide. Exemples : `1h`, `30m`, `2d`, `1j12h`');
-            if (isNaN(winnersCount) || winnersCount < 1) return message.reply('❌ Nombre de gagnants invalide.');
-            if (!prize) return message.reply('❌ Spécifiez un prix.');
+            if (!durationMs) {
+                return message.reply('❌ Durée invalide (ex: 1h, 30m, 2d)');
+            }
 
-            const endTime = Date.now() + durationMs;
+            if (isNaN(winnersCount) || winnersCount < 1) {
+                return message.reply('❌ Nombre de gagnants invalide.');
+            }
+
+            if (!prize) {
+                return message.reply('❌ Prix requis.');
+            }
+
             const gwcfg = gcfg.giveawayConfig || {};
-            const targetChannel = gwcfg.defaultChannelId
-                ? message.guild.channels.cache.get(gwcfg.defaultChannelId) || message.channel
-                : message.channel;
+            const targetChannel =
+                gwcfg.defaultChannelId
+                    ? message.guild.channels.cache.get(gwcfg.defaultChannelId) || message.channel
+                    : message.channel;
 
             const giveaway = {
                 guildId: message.guild.id,
                 channelId: targetChannel.id,
                 messageId: null,
                 prize,
-                description: null,
                 hostId: message.author.id,
                 winners: winnersCount,
                 entries: [],
-                requiredRoleId: null,
-                notifRole: null,
-                endTime,
+                endTime: Date.now() + durationMs,
                 ended: false,
                 winnerIds: [],
-                color: gwcfg.defaultColor || '#F1C40F',
-                image: null,
-                thumbnail: null,
-                createdAt: Date.now()
+                createdAt: Date.now(),
             };
 
             const embed = gw.buildGiveawayEmbed(giveaway);
             const row = gw.buildEntryRow(giveaway);
 
-            const gwMsg = await targetChannel.send({ embeds: [embed], components: [row] });
-            giveaway.messageId = gwMsg.id;
+            const msg = await targetChannel.send({
+                embeds: [embed],
+                components: [row],
+            });
+
+            giveaway.messageId = msg.id;
             gw.create(giveaway);
 
-            if (gwcfg.notifRole) {
-                const notif = gwcfg.notifRole === 'everyone' ? '@everyone' :
-                              gwcfg.notifRole === 'here' ? '@here' : `<@&${gwcfg.notifRole}>`;
-                gwMsg.channel.send({ content: `${notif} — 🎉 Un nouveau giveaway vient d'être lancé !`, allowedMentions: { parse: ['everyone', 'roles'] } }).catch(() => {});
-            }
-
-            if (targetChannel.id !== message.channel.id) {
-                message.reply(`✅ Giveaway lancé dans ${targetChannel} !`);
-            }
-            return;
+            return message.reply(`✅ Giveaway lancé dans ${targetChannel}.`);
         }
 
-        // Mode interactif : wizard
+        // ─────────────────────────────
+        // MODE WIZARD (V2 UI)
+        // ─────────────────────────────
         const existing = gw.getDraft(message.guild.id, message.author.id);
+
         if (existing) {
-            return message.reply('❌ Vous avez déjà un wizard de giveaway en cours. Terminez-le ou annulez-le d\'abord.');
+            return message.reply(
+                '❌ Un wizard est déjà en cours. Termine-le ou annule-le.'
+            );
         }
 
-        const draft = gw.createDraft(message.guild.id, message.author.id, gcfg.giveawayConfig);
-        const embed = gw.buildWizardEmbed(draft);
-        const rows = gw.buildWizardRows(draft);
+        const draft = gw.createDraft(
+            message.guild.id,
+            message.author.id,
+            gcfg.giveawayConfig
+        );
 
-        const wizardMsg = await message.channel.send({ embeds: [embed], components: rows });
+        const container = buildWizardContainer(draft);
+        const rows = buildWizardRows();
+
+        const wizardMsg = await message.channel.send({
+            components: [container, ...rows],
+            flags: MessageFlags.IsComponentsV2,
+        });
+
         draft.wizardMessageId = wizardMsg.id;
         draft.wizardChannelId = message.channel.id;
+
         gw.setDraft(message.guild.id, message.author.id, draft);
 
         await message.delete().catch(() => {});
-    }
+    },
 };
