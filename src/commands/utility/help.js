@@ -1,169 +1,297 @@
-const { ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
-const config = require('../../../config.js');
-const guildConfig = require('../../utils/guildConfig');
+const {
+    MessageFlags,
+    ContainerBuilder,
+    TextDisplayBuilder,
+    SeparatorBuilder,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle,
+    StringSelectMenuBuilder,
+} = require("discord.js");
+
+const config = require("../../../config.js");
+const guildConfig = require("../../utils/guildConfig");
 
 const categoryNames = {
-  admin: '⚔️・Moderation',
-  avatar: '🎨・Avatars',
-  backup: '💾・Backups',
-  config: '🛡️・Securite',
-  economy: '💰・Economie',
-  fun: '🎉・Fun',
-  games: '🎮・Jeux',
-  giveaway: '🎁・Giveaways',
-  info: '🔍・Informations',
-  music: '🎵・Musique',
-  other: '🔧・Autres',
-  owner: '👑・Owner',
-  roblox: '🎮・Roblox',
-  utility: '🛠️・Utilitaires'
+    admin: "⚔️・Moderation",
+    avatar: "🎨・Avatars",
+    backup: "💾・Backups",
+    config: "🛡️・Securite",
+    economy: "💰・Economie",
+    fun: "🎉・Fun",
+    games: "🎮・Jeux",
+    giveaway: "🎁・Giveaways",
+    info: "🔍・Informations",
+    music: "🎵・Musique",
+    other: "🔧・Autres",
+    owner: "👑・Owner",
+    roblox: "🎮・Roblox",
+    utility: "🛠️・Utilitaires",
 };
 
 module.exports = {
-  name: 'help',
-  description: 'Affiche le menu d\'aide complet avec toutes les catégories et commandes.',
-  async execute(client, message, args) {
-    const prefix = guildConfig.get(message.guild.id, 'prefix') || '+';
+    name: "help",
+    description: "Menu d'aide (Components V2)",
 
-    // Build categories dynamically
-    const categories = {};
-    client.commands.forEach(cmd => {
-      const cat = cmd.category || 'other';
-      const catName = categoryNames[cat] || cat;
-      if (!categories[catName]) categories[catName] = [];
-      categories[catName].push({
-        name: `${prefix}${cmd.name}`,
-        description: cmd.description || 'Pas de description'
-      });
-    });
+    async execute(client, message) {
+        const prefix = guildConfig.get(message.guild.id, "prefix") || "+";
 
-    const totalCommands = Object.values(categories).flat().length;
+        // ─────────────────────────────
+        // BUILD CATEGORIES
+        // ─────────────────────────────
+        const categories = {};
 
-    // ─── Boutons de liens ───
-    const linkRow = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setLabel('💬 Serveur Support')
-        .setStyle(ButtonStyle.Link)
-        .setURL(config.supportServerInvite)
-    );
+        client.commands.forEach(cmd => {
+            const cat = cmd.category || "other";
+            const name = categoryNames[cat] || cat;
 
-    // ─── Embed d'accueil ───
-    const homeEmbed = new EmbedBuilder()
-      .setColor("#4287f5")
-      .setTitle("🏡 Menu d'aide")
-      .setDescription(
-        [
-          "Bienvenue dans le centre d’aide du bot.",
-          "",
-          "📌 Sélectionne une catégorie via le menu ci-dessous pour voir les commandes.",
-          "",
-          "⚙️ Utilisation :",
-          "• `<...>` = obligatoire",
-          "• `[ ... ]` = optionnel",
-        ].join("\n"),
-      )
-      .addFields({
-        name: "📊 Statistiques",
-        value:
-          `• Prefix : \`${prefix}\`\n` +
-          `• Commandes : \`${totalCommands}\`\n` +
-          `• Serveurs : \`${client.guilds.cache.size}\``,
-        inline: true,
-      })
-      .setFooter({
-        text: `${client.user.username} • Help Menu`,
-        iconURL: client.user.displayAvatarURL(),
-      });
+            if (!categories[name]) categories[name] = [];
 
-    // ─── Select menu ───
-    const selectMenu = new StringSelectMenuBuilder()
-      .setCustomId('help_select')
-      .setPlaceholder('📂 Choisissez une catégorie...')
-      .addOptions(Object.keys(categories).map((cat, i) => ({
-        label: cat.replace(/[^\w\s・-]/gu, '').trim() || cat,
-        description: `${categories[cat].length} commande(s)`,
-        value: i.toString(),
-        emoji: cat.match(/^\p{Emoji}/u)?.[0] || '📋'
-      })));
+            categories[name].push({
+                name: `${prefix}${cmd.name}`,
+                description: cmd.description || "Pas de description",
+            });
+        });
 
-    const rowMenu = new ActionRowBuilder().addComponents(selectMenu);
+        const totalCommands = Object.values(categories).flat().length;
 
-    // ─── Boutons de navigation ───
-    const backButton = new ButtonBuilder().setCustomId('help_back').setLabel('◀ Précédent').setStyle(ButtonStyle.Secondary).setDisabled(true);
-    const nextButton = new ButtonBuilder().setCustomId('help_next').setLabel('Suivant ▶').setStyle(ButtonStyle.Secondary).setDisabled(true);
-    const closeButton = new ButtonBuilder().setCustomId('help_close').setLabel('✖ Fermer').setStyle(ButtonStyle.Danger);
-    const homeButton = new ButtonBuilder().setCustomId('help_home').setLabel('🏡 Accueil').setStyle(ButtonStyle.Success);
-    const navRow = new ActionRowBuilder().addComponents(homeButton, backButton, nextButton, closeButton);
+        const categoryKeys = Object.keys(categories);
 
-    const helpMessage = await message.channel.send({ embeds: [homeEmbed], components: [rowMenu, navRow, linkRow] });
+        // ─────────────────────────────
+        // HOME CONTAINER
+        // ─────────────────────────────
+        function buildHome() {
+            const container = new ContainerBuilder()
+                .setAccentColor(0x2B2D31);
 
-    let currentCategory = null;
-    let currentPage = 0;
-    const commandsPerPage = 10;
+            container.addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(
+                    "## 🏡 Menu d'aide"
+                )
+            );
 
-    function buildCategoryEmbed(catName, page) {
-      const commands = categories[catName];
-      const totalPages = Math.ceil(commands.length / commandsPerPage);
-      const slice = commands.slice(page * commandsPerPage, (page + 1) * commandsPerPage);
-      return new EmbedBuilder()
-        .setColor('#ebff00')
-        .setTitle(`${catName}`)
-        .setDescription(slice.map(c => `> **\`${c.name}\`**\n> ${c.description}`).join('\n\n'))
-        .setFooter({ text: `Page ${page + 1}/${totalPages} • ${commands.length} commande(s)`, iconURL: client.user.displayAvatarURL({ dynamic: true }) })
-        .setTimestamp();
-    }
+            container.addSeparatorComponents(
+                new SeparatorBuilder().setDivider(true)
+            );
 
-    function updateNav(commands, page) {
-      const totalPages = Math.ceil(commands.length / commandsPerPage);
-      backButton.setDisabled(page === 0);
-      nextButton.setDisabled(page + 1 >= totalPages);
-    }
+            container.addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(
+                    "📌 Sélectionne une catégorie avec le menu ci-dessous.\n\n" +
+                    "⚙️ Syntaxe :\n" +
+                    "`<...>` obligatoire\n" +
+                    "`[...]` optionnel"
+                )
+            );
 
-    const collector = helpMessage.createMessageComponentCollector({ time: 180000 });
+            container.addSeparatorComponents(
+                new SeparatorBuilder().setSpacing(1)
+            );
 
-    collector.on('collect', async interaction => {
-      if (interaction.user.id !== message.author.id) {
-        return interaction.reply({ content: '❌ Ce menu ne vous appartient pas.', ephemeral: true });
-      }
-      if (!interaction.isButton() && !interaction.isStringSelectMenu()) return;
+            container.addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(
+                    `📊 **Stats**\n` +
+                    `• Prefix : \`${prefix}\`\n` +
+                    `• Commandes : **${totalCommands}**\n` +
+                    `• Serveurs : **${client.guilds.cache.size}**`
+                )
+            );
 
-      if (interaction.isStringSelectMenu() && interaction.customId === 'help_select') {
-        const index = parseInt(interaction.values[0]);
-        currentCategory = Object.keys(categories)[index];
-        currentPage = 0;
-        const commands = categories[currentCategory];
-        updateNav(commands, currentPage);
-        return interaction.update({ embeds: [buildCategoryEmbed(currentCategory, currentPage)], components: [rowMenu, navRow, linkRow] });
-      }
-
-      if (interaction.isButton()) {
-        if (interaction.customId === 'help_close') {
-          await interaction.update({ content: '✖ Menu fermé.', embeds: [], components: [] });
-          return collector.stop();
+            return container;
         }
 
-        if (interaction.customId === 'help_home') {
-          currentCategory = null;
-          currentPage = 0;
-          backButton.setDisabled(true);
-          nextButton.setDisabled(true);
-          return interaction.update({ embeds: [homeEmbed], components: [rowMenu, navRow, linkRow] });
+        // ─────────────────────────────
+        // CATEGORY CONTAINER
+        // ─────────────────────────────
+        function buildCategory(catName, page = 0) {
+            const commands = categories[catName];
+            const perPage = 10;
+
+            const slice = commands.slice(page * perPage, (page + 1) * perPage);
+
+            const container = new ContainerBuilder()
+                .setAccentColor(0xEBFF00);
+
+            container.addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(
+                    `## 📂 ${catName}`
+                )
+            );
+
+            container.addSeparatorComponents(
+                new SeparatorBuilder().setDivider(true)
+            );
+
+            container.addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(
+                    slice.map(c =>
+                        `**\`${c.name}\`**\n${c.description}`
+                    ).join("\n\n")
+                )
+            );
+
+            container.addSeparatorComponents(
+                new SeparatorBuilder().setDivider(true)
+            );
+
+            container.addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(
+                    `-# Page ${page + 1}/${Math.ceil(commands.length / perPage)}`
+                )
+            );
+
+            return container;
         }
 
-        if (!currentCategory) {
-          return interaction.reply({ content: '❌ Sélectionnez d\'abord une catégorie.', ephemeral: true });
-        }
+        // ─────────────────────────────
+        // SELECT MENU
+        // ─────────────────────────────
+        const select = new StringSelectMenuBuilder()
+            .setCustomId("help_select")
+            .setPlaceholder("📂 Choisir une catégorie...")
+            .addOptions(
+                categoryKeys.map((cat, i) => ({
+                    label: cat,
+                    description: `${categories[cat].length} commande(s)`,
+                    value: String(i),
+                    emoji: "📋",
+                }))
+            );
 
-        const commands = categories[currentCategory];
-        if (interaction.customId === 'help_back' && currentPage > 0) currentPage--;
-        if (interaction.customId === 'help_next' && (currentPage + 1) * commandsPerPage < commands.length) currentPage++;
-        updateNav(commands, currentPage);
-        return interaction.update({ embeds: [buildCategoryEmbed(currentCategory, currentPage)], components: [rowMenu, navRow, linkRow] });
-      }
-    });
+        const rowSelect = new ActionRowBuilder().addComponents(select);
 
-    collector.on('end', () => {
-      helpMessage.edit({ components: [] }).catch(() => {});
-    });
-  }
+        // ─────────────────────────────
+        // NAV BUTTONS
+        // ─────────────────────────────
+        const rowNav = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId("help_home")
+                .setLabel("🏡 Accueil")
+                .setStyle(ButtonStyle.Success),
+
+            new ButtonBuilder()
+                .setCustomId("help_back")
+                .setLabel("◀")
+                .setStyle(ButtonStyle.Secondary)
+                .setDisabled(true),
+
+            new ButtonBuilder()
+                .setCustomId("help_next")
+                .setLabel("▶")
+                .setStyle(ButtonStyle.Secondary)
+                .setDisabled(true),
+
+            new ButtonBuilder()
+                .setCustomId("help_close")
+                .setLabel("✖")
+                .setStyle(ButtonStyle.Danger)
+        );
+
+        // ─────────────────────────────
+        // LINK BUTTON
+        // ─────────────────────────────
+        const rowLink = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setLabel("💬 Support")
+                .setStyle(ButtonStyle.Link)
+                .setURL(config.supportServerInvite)
+        );
+
+        // ─────────────────────────────
+        // SEND
+        // ─────────────────────────────
+        const msg = await message.channel.send({
+            components: [buildHome(), rowSelect, rowNav, rowLink],
+            flags: MessageFlags.IsComponentsV2,
+        });
+
+        // ─────────────────────────────
+        // STATE
+        // ─────────────────────────────
+        let currentCategory = null;
+        let page = 0;
+
+        const perPage = 10;
+
+        const collector = msg.createMessageComponentCollector({
+            time: 180000,
+        });
+
+        const updateNav = (cmds) => {
+            rowNav.components[1].setDisabled(page === 0);
+            rowNav.components[2].setDisabled((page + 1) * perPage >= cmds.length);
+        };
+
+        collector.on("collect", async i => {
+            if (i.user.id !== message.author.id) {
+                return i.reply({ content: "❌ Pas ton menu.", ephemeral: true });
+            }
+
+            // ───────── SELECT ─────────
+            if (i.isStringSelectMenu()) {
+                const index = parseInt(i.values[0]);
+                currentCategory = categoryKeys[index];
+                page = 0;
+
+                const cmds = categories[currentCategory];
+                updateNav(cmds);
+
+                return i.update({
+                    components: [
+                        buildCategory(currentCategory, page),
+                        rowSelect,
+                        rowNav,
+                        rowLink,
+                    ],
+                });
+            }
+
+            // ───────── BUTTONS ─────────
+            if (i.customId === "help_close") {
+                await i.update({
+                    content: "✖ Fermé.",
+                    components: [],
+                });
+                return collector.stop();
+            }
+
+            if (i.customId === "help_home") {
+                currentCategory = null;
+                page = 0;
+
+                rowNav.components[1].setDisabled(true);
+                rowNav.components[2].setDisabled(true);
+
+                return i.update({
+                    components: [buildHome(), rowSelect, rowNav, rowLink],
+                });
+            }
+
+            if (!currentCategory) {
+                return i.reply({
+                    content: "❌ Choisis une catégorie d'abord.",
+                    ephemeral: true,
+                });
+            }
+
+            const cmds = categories[currentCategory];
+
+            if (i.customId === "help_back") page--;
+            if (i.customId === "help_next") page++;
+
+            updateNav(cmds);
+
+            return i.update({
+                components: [
+                    buildCategory(currentCategory, page),
+                    rowSelect,
+                    rowNav,
+                    rowLink,
+                ],
+            });
+        });
+
+        collector.on("end", () => {
+            msg.edit({ components: [] }).catch(() => {});
+        });
+    },
 };
