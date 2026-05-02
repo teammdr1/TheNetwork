@@ -1,4 +1,4 @@
-# 🤖 Noob Bot - Bot Discord Multifonctions
+# 🤖 Bot Discord Multifonctions
 
 [![Discord](https://img.shields.io/badge/Discord-Bot-7289DA?logo=discord&logoColor=white)](https://discord.gg/tqxJPf4YFc)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
