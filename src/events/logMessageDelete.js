@@ -1,4 +1,11 @@
-const { EmbedBuilder, AuditLogEvent } = require('discord.js');
+const {
+    AuditLogEvent,
+    ContainerBuilder,
+    TextDisplayBuilder,
+    SeparatorBuilder,
+    SectionBuilder,
+    ThumbnailBuilder,
+} = require('discord.js');
 const { sendLog } = require('../utils/logHelper');
 
 module.exports = {
@@ -16,24 +23,48 @@ module.exports = {
                 executor = entry.executor;
         } catch {}
 
-        const embed = new EmbedBuilder()
-            .setTitle('🗑️ Message Supprimé')
-            .setColor('#ED4245')
-            .setThumbnail(message.author?.displayAvatarURL({ dynamic: true }))
-            .addFields(
-                { name: '👤 Auteur', value: message.author ? `${message.author.tag} \`${message.author.id}\`` : 'Inconnu', inline: true },
-                { name: '📌 Salon', value: `${message.channel}`, inline: true },
-                { name: '🛠️ Supprimé par', value: executor ? `${executor.tag}` : 'L\'auteur lui-même', inline: true }
+        const container = new ContainerBuilder().setAccentColor(0xED4245);
+        container.addTextDisplayComponents(
+            new TextDisplayBuilder().setContent('## 🗑️ Message Supprimé')
+        );
+        container.addSeparatorComponents(new SeparatorBuilder().setSpacing(1).setDivider(true));
+
+        const section = new SectionBuilder();
+        section.addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `**👤 Auteur :** ${message.author ? `${message.author.tag} \`${message.author.id}\`` : 'Inconnu'}\n` +
+                `**📌 Salon :** ${message.channel}\n` +
+                `**🛠️ Supprimé par :** ${executor ? executor.tag : "L'auteur lui-même"}`
             )
-            .setTimestamp();
+        );
+        if (message.author?.displayAvatarURL) {
+            section.setThumbnailAccessory(
+                new ThumbnailBuilder().setURL(message.author.displayAvatarURL({ dynamic: true }))
+            );
+        }
+        container.addSectionComponents(section);
 
         if (message.content) {
-            embed.addFields({ name: '📝 Contenu', value: message.content.slice(0, 1000) || '*Vide*', inline: false });
+            container.addSeparatorComponents(new SeparatorBuilder().setSpacing(1).setDivider(true));
+            container.addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(
+                    `**📝 Contenu**\n${message.content.slice(0, 1000) || '*Vide*'}`
+                )
+            );
         }
         if (message.attachments.size > 0) {
-            embed.addFields({ name: '📎 Fichiers', value: message.attachments.map(a => a.url).join('\n').slice(0, 500), inline: false });
+            container.addSeparatorComponents(new SeparatorBuilder().setSpacing(1).setDivider(true));
+            container.addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(
+                    `**📎 Fichiers**\n${message.attachments.map(a => a.url).join('\n').slice(0, 500)}`
+                )
+            );
         }
 
-        await sendLog(message.guild, 'messages', embed);
+        container.addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(`-# <t:${Math.floor(Date.now() / 1000)}:F>`)
+        );
+
+        await sendLog(message.guild, 'messages', container);
     }
 };
