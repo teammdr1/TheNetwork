@@ -14,6 +14,7 @@ const guildConfig = require("../../utils/guildConfig");
 
 const categoryNames = {
     admin: "⚔️・Moderation",
+    automod: "🛡️・AutoMod",
     avatar: "🎨・Avatars",
     backup: "💾・Backups",
     config: "🛡️・Securite",
@@ -153,7 +154,6 @@ module.exports = {
                     label: cat,
                     description: `${categories[cat].length} commande(s)`,
                     value: String(i),
-                    emoji: "📋",
                 }))
             );
 
