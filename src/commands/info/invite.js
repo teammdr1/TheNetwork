@@ -1,15 +1,41 @@
-const { EmbedBuilder } = require("discord.js");
+const {
+    MessageFlags,
+    ContainerBuilder,
+    TextDisplayBuilder,
+    SeparatorBuilder,
+    SectionBuilder,
+    ThumbnailBuilder,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle,
+} = require('discord.js');
 
 module.exports = {
-  name: "invite",
-  description: "Invite le bot sur votre serveur",
+    name: 'invite',
+    description: 'Invite le bot sur votre serveur',
+    async execute(client, message, args) {
+        const inviteURL = `https://discord.com/oauth2/authorize?client_id=${client.user.id}&permissions=8&integration_type=0&scope=bot`;
 
-  async execute(client, message, args) {
-    const inviteEmbed = new EmbedBuilder()
-      .setTitle("Invite le bot")
-      .setDescription(`Clique sur le lien suivant pour inviter le bot sur ton serveur : https://discord.com/oauth2/authorize?client_id=1492793436821131394&permissions=8&integration_type=0&scope=bot`)
-      .setColor("#464ec2");
+        const container = new ContainerBuilder().setAccentColor(0x464EC2);
+        container.addSectionComponents(
+            new SectionBuilder()
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
+                        `## 🔗 Inviter ${client.user.username}\nClique sur le bouton ci-dessous pour m\'inviter sur ton serveur !`
+                    )
+                )
+                .setThumbnailAccessory(
+                    new ThumbnailBuilder().setURL(client.user.displayAvatarURL({ size: 128 }))
+                )
+        );
 
-    message.reply({ embeds: [inviteEmbed] });
-  },
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setLabel('Inviter le bot')
+                .setStyle(ButtonStyle.Link)
+                .setURL(inviteURL)
+        );
+
+        message.reply({ components: [container, row], flags: MessageFlags.IsComponentsV2 });
+    },
 };
