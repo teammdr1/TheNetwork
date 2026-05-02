@@ -1,7 +1,7 @@
 module.exports = {
-  token: process.env.DISCORD_TOKEN || 'ton-token-ici',
-  prefix: '+', // préfix par défaut
-  embedColor: '#49ff02',
-  ownerId: process.env.OWNER_ID || 'ton-id-ici',
-  supportServerInvite: 'lien-de-ton-serveur'
+  token: "VOTRE_TOKEN_DISCORD",
+  prefix: "+",
+  embedColor: "#49ff02",
+  ownerId: "VOTRE_ID_DISCORD",
+  supportServerInvite: "https://discord.gg/votre-serveur"
 };
