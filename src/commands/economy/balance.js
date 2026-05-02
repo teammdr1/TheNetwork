@@ -1,37 +1,75 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { 
+  MessageFlags,
+  ContainerBuilder,
+  TextDisplayBuilder,
+  SeparatorBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle
+} = require('discord.js');
+
 const economy = require('../../utils/economy');
 
 module.exports = {
   name: 'balance',
   aliases: ['bal', 'money', 'solde'],
   description: 'Affiche votre solde économique.',
+  
   async execute(client, message, args) {
     const target = message.mentions.users.first() || message.author;
     const userData = economy.getUserData(target.id);
     const stats = economy.getUserStats(target.id);
 
-    const embed = new EmbedBuilder()
-      .setColor('#00ff00')
-      .setTitle(`💰 Solde de ${target.username}`)
-      .addFields(
-        { name: '💵 Portefeuille', value: `${userData.cash.toLocaleString()} bobux`, inline: true },
-        { name: '🏦 Banque', value: `${userData.bank.toLocaleString()} bobux`, inline: true },
-        { name: '💎 Total', value: `${stats.total.toLocaleString()} bobux`, inline: true },
-        { name: '📊 Statistiques', value: `Travaux: ${stats.workCount}\nDaily: ${stats.dailyCount}\nTotal gagné: ${stats.totalEarned.toLocaleString()} bobux`, inline: false }
-      )
-      .setFooter({ text: target.id === message.author.id ? 'Utilisez +balance @user pour voir le solde d\'autrui' : '' })
-      .setTimestamp();
+    const container = new ContainerBuilder()
+      .setAccentColor(0x00ff00);
 
+    // ── Titre ──
+    container.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(
+        `## 💰 Solde de ${target.username}`
+      )
+    );
+
+    container.addSeparatorComponents(
+      new SeparatorBuilder().setDivider(true).setSpacing(1)
+    );
+
+    // ── Infos principales ──
+    container.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(
+        `💵 **Portefeuille :** ${userData.cash.toLocaleString()} bobux\n` +
+        `🏦 **Banque :** ${userData.bank.toLocaleString()} bobux\n` +
+        `💎 **Total :** ${stats.total.toLocaleString()} bobux`
+      )
+    );
+
+    container.addSeparatorComponents(
+      new SeparatorBuilder().setDivider(true).setSpacing(1)
+    );
+
+    // ── Stats ──
+    container.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(
+        `📊 **Statistiques**\n` +
+        `• Travaux : ${stats.workCount}\n` +
+        `• Daily : ${stats.dailyCount}\n` +
+        `• Total gagné : ${stats.totalEarned.toLocaleString()} bobux`
+      )
+    );
+
+    // ── Boutons ──
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId('refresh_balance')
         .setLabel('🔄 Actualiser')
         .setStyle(ButtonStyle.Secondary),
+
       new ButtonBuilder()
         .setCustomId('deposit_all')
         .setLabel('📥 Tout déposer')
         .setStyle(ButtonStyle.Primary)
         .setDisabled(userData.cash === 0),
+
       new ButtonBuilder()
         .setCustomId('withdraw_all')
         .setLabel('📤 Tout retirer')
@@ -39,6 +77,20 @@ module.exports = {
         .setDisabled(userData.bank === 0)
     );
 
-    await message.channel.send({ embeds: [embed], components: [row] });
+    container.addActionRowComponents(row);
+
+    // ── Footer conditionnel ──
+    if (target.id === message.author.id) {
+      container.addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(
+          `-# Utilisez +balance @user pour voir le solde d'autrui`
+        )
+      );
+    }
+
+    await message.channel.send({
+      components: [container],
+      flags: MessageFlags.IsComponentsV2
+    });
   }
 };
