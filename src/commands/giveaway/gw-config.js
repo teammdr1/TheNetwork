@@ -1,124 +1,226 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionsBitField } = require('discord.js');
+const {
+    MessageFlags,
+    ContainerBuilder,
+    TextDisplayBuilder,
+    SeparatorBuilder,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle,
+    ModalBuilder,
+    TextInputBuilder,
+    TextInputStyle,
+    PermissionsBitField,
+} = require('discord.js');
 const guildConfig = require('../../utils/guildConfig');
 
+// ─────────────────────────────────────────────
+// BUILDER CONTAINER
+// ─────────────────────────────────────────────
+function buildContainer(gc, footer = null) {
+    const defaultCh  = gc.defaultChannelId ? `<#${gc.defaultChannelId}>` : '*Non défini (salon actuel)*';
+    const defaultWin = gc.defaultWinners || 1;
+
+    const managerRoles = gc.managerRoles?.length > 0
+        ? gc.managerRoles.map(r => `<@&${r}>`).join(', ')
+        : '*Aucun (admins seulement)*';
+
+    // couleur FIXE (pas de config user)
+    const container = new ContainerBuilder()
+        .setAccentColor(0x2B2D31);
+
+    container.addTextDisplayComponents(
+        new TextDisplayBuilder().setContent('## ⚙️ Configuration des Giveaways')
+    );
+
+    container.addSeparatorComponents(
+        new SeparatorBuilder().setSpacing(1).setDivider(true)
+    );
+
+    container.addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(
+            `📡 **Salon par défaut :** ${defaultCh}\n` +
+            `👥 **Gagnants par défaut :** ${defaultWin}\n` +
+            `🔑 **Rôles gestionnaires :** ${managerRoles}`
+        )
+    );
+
+    container.addSeparatorComponents(
+        new SeparatorBuilder().setSpacing(1).setDivider(true)
+    );
+
+    container.addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(
+            footer
+                ? `-# ${footer}`
+                : '-# Cliquez sur un bouton pour modifier une valeur.'
+        )
+    );
+
+    return container;
+}
+
+// ─────────────────────────────────────────────
+// BOUTONS
+// ─────────────────────────────────────────────
+function buildRows(disabled = false) {
+    const row1 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('gw_cfg_channel')
+            .setLabel('📡 Salon')
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(disabled),
+
+        new ButtonBuilder().setCustomId('gw_cfg_winners')
+            .setLabel('👥 Gagnants')
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(disabled),
+
+        new ButtonBuilder().setCustomId('gw_cfg_roles')
+            .setLabel('🔑 Rôles')
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(disabled)
+    );
+
+    const row2 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('gw_cfg_reset')
+            .setLabel('🔄 Reset')
+            .setStyle(ButtonStyle.Danger)
+            .setDisabled(disabled),
+
+        new ButtonBuilder().setCustomId('gw_cfg_close')
+            .setLabel('✖ Fermer')
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(disabled)
+    );
+
+    return [row1, row2];
+}
+
+// ─────────────────────────────────────────────
+// COMMANDE
+// ─────────────────────────────────────────────
 module.exports = {
     name: 'gw-config',
-    description: 'Configure les paramètres par défaut des giveaways du serveur.',
-    async execute(client, message, args) {
+    description: 'Configuration giveaways (V2)',
+
+    async execute(client, message) {
         if (!message.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
-            return message.reply('❌ Permission **Gérer le serveur** requise.');
+            return message.reply('❌ Permission requise : Gérer le serveur.');
         }
 
         const cfg = guildConfig.getAll(message.guild.id);
-        const gc = cfg.giveawayConfig || {};
+        const gc  = cfg.giveawayConfig || {};
 
-        const defaultColor = gc.defaultColor || '#F1C40F';
-        const defaultChannel = gc.defaultChannelId ? `<#${gc.defaultChannelId}>` : '*Non défini (salon actuel)*';
-        const defaultWinners = gc.defaultWinners || 1;
-        const managerRoles = gc.managerRoles?.length > 0 ? gc.managerRoles.map(r => `<@&${r}>`).join(', ') : '*Aucun (admins seulement)*';
+        const [row1, row2] = buildRows();
+        const container = buildContainer(gc);
 
-        const embed = new EmbedBuilder()
-            .setTitle('⚙️ Configuration des Giveaways')
-            .setColor(defaultColor)
-            .addFields(
-                { name: '🎨 Couleur par défaut', value: `\`${defaultColor}\``, inline: true },
-                { name: '📡 Salon par défaut', value: defaultChannel, inline: true },
-                { name: '👥 Gagnants par défaut', value: `${defaultWinners}`, inline: true },
-                { name: '🔑 Rôles gestionnaires', value: managerRoles, inline: false }
-            )
-            .setFooter({ text: 'Cliquez sur un bouton pour modifier une valeur.' })
-            .setTimestamp();
+        container.addActionRowComponents(row1, row2);
 
-        const row1 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('gw_cfg_color').setLabel('🎨 Couleur').setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId('gw_cfg_channel').setLabel('📡 Salon').setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId('gw_cfg_winners').setLabel('👥 Gagnants').setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId('gw_cfg_roles').setLabel('🔑 Rôles gestionnaires').setStyle(ButtonStyle.Secondary)
-        );
-        const row2 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('gw_cfg_reset').setLabel('🔄 Réinitialiser').setStyle(ButtonStyle.Danger),
-            new ButtonBuilder().setCustomId('gw_cfg_close').setLabel('✖ Fermer').setStyle(ButtonStyle.Secondary)
-        );
+        const msg = await message.channel.send({
+            components: [container],
+            flags: MessageFlags.IsComponentsV2,
+        });
 
-        const cfgMsg = await message.channel.send({ embeds: [embed], components: [row1, row2] });
-
-        const collector = cfgMsg.createMessageComponentCollector({
+        const collector = msg.createMessageComponentCollector({
             filter: i => i.user.id === message.author.id,
-            time: 120000
+            time: 120000,
         });
 
         collector.on('collect', async interaction => {
-            if (!interaction.isButton()) return;
 
+            // ── CLOSE ──
             if (interaction.customId === 'gw_cfg_close') {
-                await interaction.update({ components: [] });
+                const closed = buildContainer(gc, '✖ Fermé.');
+                await interaction.update({
+                    components: [closed],
+                    flags: MessageFlags.IsComponentsV2,
+                });
                 return collector.stop();
             }
 
+            // ── RESET ──
             if (interaction.customId === 'gw_cfg_reset') {
-                guildConfig.setNested(message.guild.id, 'giveawayConfig', 'defaultColor', '#F1C40F');
                 guildConfig.setNested(message.guild.id, 'giveawayConfig', 'defaultChannelId', null);
                 guildConfig.setNested(message.guild.id, 'giveawayConfig', 'defaultWinners', 1);
                 guildConfig.setNested(message.guild.id, 'giveawayConfig', 'managerRoles', []);
-                await interaction.reply({ content: '✅ Configuration réinitialisée.', ephemeral: true });
-                return refreshCfgMsg(interaction, cfgMsg, message.guild.id, row1, row2);
+
+                await interaction.reply({
+                    content: '✅ Configuration reset.',
+                    ephemeral: true
+                });
+
+                return refresh(msg, message.guild.id);
             }
 
-            // Ouvrir un modal selon le bouton
-            const { ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
             const modal = new ModalBuilder();
 
-            if (interaction.customId === 'gw_cfg_color') {
-                modal.setCustomId('gw_modal_cfg_color').setTitle('🎨 Couleur par défaut');
-                modal.addComponents(new ActionRowBuilder().addComponents(
-                    new TextInputBuilder().setCustomId('value').setLabel('Couleur hex (ex: #F1C40F)').setStyle(TextInputStyle.Short)
-                        .setValue(gc.defaultColor || '#F1C40F').setRequired(true)
-                ));
-            } else if (interaction.customId === 'gw_cfg_channel') {
-                modal.setCustomId('gw_modal_cfg_channel').setTitle('📡 Salon par défaut');
-                modal.addComponents(new ActionRowBuilder().addComponents(
-                    new TextInputBuilder().setCustomId('value').setLabel('ID ou #mention du salon').setStyle(TextInputStyle.Short)
-                        .setPlaceholder('Ex: 1234567890 ou #giveaways').setRequired(false)
-                ));
-            } else if (interaction.customId === 'gw_cfg_winners') {
-                modal.setCustomId('gw_modal_cfg_winners').setTitle('👥 Gagnants par défaut');
-                modal.addComponents(new ActionRowBuilder().addComponents(
-                    new TextInputBuilder().setCustomId('value').setLabel('Nombre de gagnants').setStyle(TextInputStyle.Short)
-                        .setValue(String(gc.defaultWinners || 1)).setRequired(true)
-                ));
-            } else if (interaction.customId === 'gw_cfg_roles') {
-                modal.setCustomId('gw_modal_cfg_roles').setTitle('🔑 Rôles gestionnaires');
-                modal.addComponents(new ActionRowBuilder().addComponents(
-                    new TextInputBuilder().setCustomId('value')
-                        .setLabel('IDs de rôles séparés par des virgules')
-                        .setStyle(TextInputStyle.Paragraph)
-                        .setPlaceholder('Ex: 123456789, 987654321')
-                        .setRequired(false)
-                ));
+            const gcNow = guildConfig.getAll(message.guild.id).giveawayConfig || {};
+
+            // ── CHANNEL ──
+            if (interaction.customId === 'gw_cfg_channel') {
+                modal.setCustomId('gw_modal_channel').setTitle('📡 Salon');
+                modal.addComponents(
+                    new ActionRowBuilder().addComponents(
+                        new TextInputBuilder()
+                            .setCustomId('value')
+                            .setLabel('ID ou #salon')
+                            .setStyle(TextInputStyle.Short)
+                            .setRequired(false)
+                    )
+                );
+            }
+
+            // ── WINNERS ──
+            else if (interaction.customId === 'gw_cfg_winners') {
+                modal.setCustomId('gw_modal_winners').setTitle('👥 Gagnants');
+                modal.addComponents(
+                    new ActionRowBuilder().addComponents(
+                        new TextInputBuilder()
+                            .setCustomId('value')
+                            .setLabel('Nombre')
+                            .setStyle(TextInputStyle.Short)
+                            .setValue(String(gcNow.defaultWinners || 1))
+                    )
+                );
+            }
+
+            // ── ROLES ──
+            else if (interaction.customId === 'gw_cfg_roles') {
+                modal.setCustomId('gw_modal_roles').setTitle('🔑 Rôles');
+                modal.addComponents(
+                    new ActionRowBuilder().addComponents(
+                        new TextInputBuilder()
+                            .setCustomId('value')
+                            .setLabel('IDs séparés par virgule')
+                            .setStyle(TextInputStyle.Paragraph)
+                    )
+                );
             }
 
             await interaction.showModal(modal);
         });
 
-        collector.on('end', () => {
-            cfgMsg.edit({ components: [] }).catch(() => {});
-        });
+        collector.on('end', () => refresh(msg, message.guild.id, true));
     }
 };
 
-async function refreshCfgMsg(interaction, cfgMsg, guildId, row1, row2) {
-    const cfg = guildConfig.getAll(guildId);
-    const gc = cfg.giveawayConfig || {};
-    const embed = new EmbedBuilder()
-        .setTitle('⚙️ Configuration des Giveaways')
-        .setColor(gc.defaultColor || '#F1C40F')
-        .addFields(
-            { name: '🎨 Couleur par défaut', value: `\`${gc.defaultColor || '#F1C40F'}\``, inline: true },
-            { name: '📡 Salon par défaut', value: gc.defaultChannelId ? `<#${gc.defaultChannelId}>` : '*Non défini*', inline: true },
-            { name: '👥 Gagnants par défaut', value: `${gc.defaultWinners || 1}`, inline: true },
-            { name: '🔑 Rôles gestionnaires', value: gc.managerRoles?.length > 0 ? gc.managerRoles.map(r => `<@&${r}>`).join(', ') : '*Aucun*', inline: false }
-        )
-        .setFooter({ text: 'Configuration mise à jour ✅' })
-        .setTimestamp();
-    await cfgMsg.edit({ embeds: [embed], components: [row1, row2] }).catch(() => {});
+// ─────────────────────────────────────────────
+// REFRESH
+// ─────────────────────────────────────────────
+async function refresh(msg, guildId, closed = false) {
+    const gc = guildConfig.getAll(guildId).giveawayConfig || {};
+
+    const container = buildContainer(
+        gc,
+        closed ? '✖ Expiré.' : '✅ Mis à jour.'
+    );
+
+    if (!closed) {
+        const [row1, row2] = buildRows();
+        container.addActionRowComponents(row1, row2);
+    }
+
+    await msg.edit({
+        components: [container],
+        flags: MessageFlags.IsComponentsV2,
+    }).catch(() => {});
 }
