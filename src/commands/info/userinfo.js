@@ -1,62 +1,105 @@
-const { EmbedBuilder } = require('discord.js');
+const {
+    MessageFlags,
+    ContainerBuilder,
+    TextDisplayBuilder,
+    SectionBuilder,
+    ThumbnailBuilder,
+    SeparatorBuilder,
+    MediaGalleryBuilder,
+    MediaGalleryItemBuilder,
+} = require('discord.js');
 
 module.exports = {
     name: 'userinfo',
     description: "Afficher les informations d'un utilisateur",
     async execute(client, message, args) {
         let user;
-
         if (args.length > 0) {
             const mention = message.mentions.users.first();
-
             if (mention) {
                 user = mention;
             } else {
-                const userId = args[0];
                 try {
-                    user = await client.users.fetch(userId);
+                    user = await client.users.fetch(args[0]);
                 } catch {
-                    return message.channel.send("❌ Utilisateur non trouvé.");
+                    return message.channel.send('❌ Utilisateur non trouvé.');
                 }
             }
         } else {
             user = message.author;
         }
 
-        const member = await message.guild.members.fetch(user.id);
+        // Fetch avec banner
+        const fetchedUser = await client.users.fetch(user.id, { force: true }).catch(() => user);
+        const member = await message.guild.members.fetch(user.id).catch(() => null);
 
-        const embed = new EmbedBuilder()
-            .setTitle(`Informations sur ${user.tag}`)
-            .setThumbnail(user.displayAvatarURL({ dynamic: true }))
-            .addFields(
-                { name: 'ID', value: user.id, inline: true },
-                { name: "Nom d'utilisateur", value: user.username, inline: true },
-                { name: 'Surnom', value: member.nickname ?? 'Aucun', inline: true },
-                {
-                    name: 'Compte créé le',
-                    value: `<t:${Math.floor(user.createdTimestamp / 1000)}:F>`,
-                    inline: false
-                },
-                {
-                    name: 'Rejoint le serveur le',
-                    value: `<t:${Math.floor(member.joinedTimestamp / 1000)}:F>`,
-                    inline: false
-                },
-                {
-                    name: 'Rôles',
-                    value: member.roles.cache
-                        .filter(role => role.name !== '@everyone')
-                        .map(role => role.name)
-                        .join(', ') || 'Aucun',
-                    inline: false
-                }
+        const avatarURL = user.displayAvatarURL({ dynamic: true, size: 256 });
+        const bannerURL = fetchedUser.bannerURL?.({ size: 1024 }) ?? null;
+        const color = member?.displayColor || 0x5865F2;
+
+        const roles = member
+            ? member.roles.cache
+                .filter(r => r.name !== '@everyone')
+                .sort((a, b) => b.position - a.position)
+                .map(r => `<@&${r.id}>`)
+                .join(' ') || '*Aucun*'
+            : '*Non membre*';
+        const roleCount = member ? member.roles.cache.filter(r => r.name !== '@everyone').size : 0;
+
+        const container = new ContainerBuilder().setAccentColor(color || 0x5865F2);
+
+        // ── En-tête : nom + avatar ──
+        container.addSectionComponents(
+            new SectionBuilder()
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
+                        `## ${user.tag}${user.bot ? ' 🤖' : ''}\n` +
+                        (member?.nickname ? `**Surnom :** ${member.nickname}\n` : '') +
+                        `🆔 \`${user.id}\``
+                    )
+                )
+                .setThumbnailAccessory(
+                    new ThumbnailBuilder().setURL(avatarURL)
+                )
+        );
+
+        container.addSeparatorComponents(new SeparatorBuilder().setSpacing(1).setDivider(true));
+
+        // ── Dates ──
+        container.addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `### 📅 Dates\n` +
+                `🔨 Compte créé : <t:${Math.floor(user.createdTimestamp / 1000)}:F> (<t:${Math.floor(user.createdTimestamp / 1000)}:R>)` +
+                (member ? `\n📥 A rejoint le serveur : <t:${Math.floor(member.joinedTimestamp / 1000)}:F> (<t:${Math.floor(member.joinedTimestamp / 1000)}:R>)` : '')
             )
-            .setColor(0x00FF00)
-            .setFooter({
-                text: `Demandé par ${message.author.tag}`,
-                iconURL: message.author.displayAvatarURL({ dynamic: true })
-            });
+        );
 
-        await message.channel.send({ embeds: [embed] });
+        container.addSeparatorComponents(new SeparatorBuilder().setSpacing(1).setDivider(true));
+
+        // ── Rôles ──
+        container.addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `### 🎖️ Rôles (${roleCount})\n${roles}`
+            )
+        );
+
+        // ── Bannière (si présente) ──
+        if (bannerURL) {
+            container.addSeparatorComponents(new SeparatorBuilder().setSpacing(1));
+            container.addMediaGalleryComponents(
+                new MediaGalleryBuilder().addItems(
+                    new MediaGalleryItemBuilder()
+                        .setURL(bannerURL)
+                        .setDescription(`Bannière de ${user.tag}`)
+                )
+            );
+        }
+
+        container.addSeparatorComponents(new SeparatorBuilder().setSpacing(1));
+        container.addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(`-# Demandé par ${message.author.tag}`)
+        );
+
+        await message.channel.send({ components: [container], flags: MessageFlags.IsComponentsV2 });
     }
 };
