@@ -1,4 +1,10 @@
-const { EmbedBuilder } = require('discord.js');
+const {
+    ContainerBuilder,
+    TextDisplayBuilder,
+    SeparatorBuilder,
+    SectionBuilder,
+    ThumbnailBuilder,
+} = require('discord.js');
 const { sendLog } = require('../utils/logHelper');
 
 module.exports = {
@@ -7,19 +13,35 @@ module.exports = {
         if (!newMessage.guild || newMessage.author?.bot) return;
         if (!oldMessage.content || oldMessage.content === newMessage.content) return;
 
-        const embed = new EmbedBuilder()
-            .setTitle('✏️ Message Modifié')
-            .setColor('#FEE75C')
-            .setThumbnail(newMessage.author?.displayAvatarURL({ dynamic: true }))
-            .addFields(
-                { name: '👤 Auteur', value: `${newMessage.author?.tag} \`${newMessage.author?.id}\``, inline: true },
-                { name: '📌 Salon', value: `${newMessage.channel}`, inline: true },
-                { name: '🔗 Lien', value: `[Voir le message](${newMessage.url})`, inline: true },
-                { name: '❌ Avant', value: (oldMessage.content || '*Vide*').slice(0, 500), inline: false },
-                { name: '✅ Après', value: (newMessage.content || '*Vide*').slice(0, 500), inline: false }
-            )
-            .setTimestamp();
+        const container = new ContainerBuilder().setAccentColor(0xFEE75C);
+        container.addTextDisplayComponents(
+            new TextDisplayBuilder().setContent('## ✏️ Message Modifié')
+        );
+        container.addSeparatorComponents(new SeparatorBuilder().setSpacing(1).setDivider(true));
 
-        await sendLog(newMessage.guild, 'messages', embed);
+        const section = new SectionBuilder();
+        section.addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `**👤 Auteur :** ${newMessage.author?.tag} \`${newMessage.author?.id}\`\n` +
+                `**📌 Salon :** ${newMessage.channel}\n` +
+                `**🔗 Lien :** [Voir le message](${newMessage.url})`
+            )
+        );
+        section.setThumbnailAccessory(
+            new ThumbnailBuilder().setURL(newMessage.author?.displayAvatarURL({ dynamic: true }))
+        );
+        container.addSectionComponents(section);
+        container.addSeparatorComponents(new SeparatorBuilder().setSpacing(1).setDivider(true));
+        container.addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `**❌ Avant**\n${(oldMessage.content || '*Vide*').slice(0, 500)}\n\n` +
+                `**✅ Après**\n${(newMessage.content || '*Vide*').slice(0, 500)}`
+            )
+        );
+        container.addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(`-# <t:${Math.floor(Date.now() / 1000)}:F>`)
+        );
+
+        await sendLog(newMessage.guild, 'messages', container);
     }
 };
