@@ -23,15 +23,24 @@ module.exports = {
 
         let page = 0;
 
+        function getRoleName(id) {
+            const role = message.guild.roles.cache.get(id);
+            return role ? role.name : 'Rôle supprimé';
+        }
+
         function getContainer(page) {
             const config = guildConfig.getAll(message.guild.id);
             const ar = config.antiraidConfig;
 
             const welcomeChannel = config.welcomeChannelId ? `<#${config.welcomeChannelId}>` : '❌ Non configuré';
             const logChannel = config.logChannelId ? `<#${config.logChannelId}>` : '❌ Non configuré';
-            const soutienRole = config.soutienRoleId ? `<@&${config.soutienRoleId}>` : '❌ Non configuré';
+
+            const soutienRole = config.soutienRoleId
+                ? getRoleName(config.soutienRoleId)
+                : '❌ Non configuré';
+
             const warnRoles = config.warnRoles?.length > 0
-                ? config.warnRoles.map(id => `<@&${id}>`).join(', ')
+                ? config.warnRoles.map(id => getRoleName(id)).join(', ')
                 : '❌ Non configuré';
 
             const container = new ContainerBuilder().setAccentColor(0x49FF02);
