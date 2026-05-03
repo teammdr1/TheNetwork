@@ -11,11 +11,9 @@ const path = require('path');
 const { getAutomod, isWhitelisted } = require('../utils/automodConfig');
 const { sendLog } = require('../utils/logHelper');
 
-// ─── Regex ───
 const INVITE_REGEX = /(?:https?:\/\/)?(?:www\.)?(?:discord(?:app)?\.(?:gg|com\/invite)\/[a-zA-Z0-9-]+)/gi;
 const URL_REGEX = /(?:https?:\/\/|www\.)[^\s<>\"]{2,}/gi;
 
-// ─── Warnings ───
 const WARNINGS_FILE = path.join(__dirname, '../../data/warnings.json');
 
 function addWarning(guildId, userId, reason) {
@@ -29,7 +27,6 @@ function addWarning(guildId, userId, reason) {
     try { fs.writeFileSync(WARNINGS_FILE, JSON.stringify(data, null, 2)); } catch {}
 }
 
-// ─── Labels ───
 const ACTION_COLORS = {
     delete: 0x99AAB5,
     warn:   0xFEE75C,
@@ -50,16 +47,13 @@ const MODULE_LABELS = {
     antiwords:  '🚫 Anti-Mots'
 };
 
-// ─── Action principale ───
 async function takeAction(message, mod, moduleName, reason) {
     const { action } = mod;
     const member = message.member;
     const guild = message.guild;
 
-    // Suppression du message
     try { await message.delete(); } catch {}
 
-    // Sanction
     if (member) {
         if (action === 'warn') {
             addWarning(guild.id, member.id, `AutoMod (${moduleName}): ${reason}`);
@@ -84,7 +78,6 @@ async function takeAction(message, mod, moduleName, reason) {
         }
     }
 
-    // ─── Container de log ───
     const container = new ContainerBuilder().setAccentColor(ACTION_COLORS[action] || 0x99AAB5);
     container.addTextDisplayComponents(
         new TextDisplayBuilder().setContent(`## 🛡️ AutoMod — ${MODULE_LABELS[moduleName]}`)
@@ -110,17 +103,14 @@ async function takeAction(message, mod, moduleName, reason) {
         new TextDisplayBuilder().setContent(`-# <t:${Math.floor(Date.now() / 1000)}:F>`)
     );
 
-    // Log dans le salon dédié du module
     if (mod.logChannelId) {
         const logCh = guild.channels.cache.get(mod.logChannelId);
         if (logCh) logCh.send({ components: [container], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
     }
 
-    // Log global modération
     await sendLog(guild, 'moderation', container);
 }
 
-// ─── Gestionnaire ───
 module.exports = {
     name: 'messageCreate',
     async execute(message, client) {
@@ -131,7 +121,6 @@ module.exports = {
         const automod = getAutomod(message.guild.id);
         const content = message.content;
 
-        // 1. Anti-Invitations
         const inv = automod.antiinvite;
         if (inv?.enabled && !isWhitelisted(message, inv)) {
             INVITE_REGEX.lastIndex = 0;
@@ -141,7 +130,6 @@ module.exports = {
             }
         }
 
-        // 2. Anti-Liens (après anti-invitations pour éviter double-déclenchement)
         const al = automod.antilink;
         if (al?.enabled && !isWhitelisted(message, al)) {
             URL_REGEX.lastIndex = 0;
@@ -151,7 +139,6 @@ module.exports = {
             }
         }
 
-        // 3. Anti-Mots
         const aw = automod.antiwords;
         if (aw?.enabled && aw.words?.length > 0 && !isWhitelisted(message, aw)) {
             const lower = content.toLowerCase();
