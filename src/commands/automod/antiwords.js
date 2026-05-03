@@ -43,15 +43,41 @@ module.exports = {
         }
 
         if (sub === 'add') {
-            const word = args.slice(1).join(' ').trim().toLowerCase();
-            if (!word) return message.reply(`❌ Précisez le mot à ajouter : \`${prefix}antiwords add <mot>\``);
-            const current = getModule(message.guild.id, MODULE);
-            if (current.words.some(w => w.toLowerCase() === word)) {
-                return message.reply(`❌ \`${word}\` est déjà dans la liste noire.`);
+            const input = args.slice(1).join(' ').toLowerCase();
+
+            if (!input) {
+                return message.reply(`❌ Précisez au moins un mot : \`${prefix}antiwords add mot1, mot2, mot3\``);
             }
-            current.words.push(word);
+
+            const current = getModule(message.guild.id, MODULE);
+            const words = input
+                .split(',')
+                .map(w => w.trim())
+                .filter(w => w.length > 0);
+
+            if (!words.length) {
+                return message.reply('❌ Aucun mot valide fourni.');
+            }
+
+            let added = [];
+            let skipped = [];
+
+            for (const word of words) {
+                if (current.words.some(w => w.toLowerCase() === word)) {
+                    skipped.push(word);
+                } else {
+                    current.words.push(word);
+                    added.push(word);
+                }
+            }
+
             setModule(message.guild.id, MODULE, current);
-            return message.reply(`✅ Mot \`${word}\` ajouté à la liste noire. (${current.words.length} mot(s) au total)`);
+
+            return message.reply(
+                `✅ ${added.length} mot(s) ajouté(s).\n` +
+                (added.length ? `➕ ${added.map(w => `\`${w}\``).join(', ')}\n` : '') +
+                (skipped.length ? `⚠️ Déjà présents : ${skipped.map(w => `\`${w}\``).join(', ')}` : '')
+            );
         }
 
         if (sub === 'remove' || sub === 'rm') {
