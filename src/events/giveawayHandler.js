@@ -14,7 +14,6 @@ const {
 const guildConfig = require('../utils/guildConfig');
 const gw = require('../utils/giveawayManager');
 
-// ─── Helpers ───
 
 function parseRoleInput(str, guild) {
     if (!str) return null;
@@ -47,8 +46,6 @@ async function refreshWizard(guild, draft) {
         });
     } catch {}
 }
-
-// ─── Modal pour le wizard ───
 
 async function openWizardModal(interaction, draft) {
     const { customId } = interaction;
@@ -94,18 +91,13 @@ async function openWizardModal(interaction, draft) {
     await interaction.showModal(modal);
 }
 
-// ─── HANDLER PRINCIPAL ───
-
 module.exports = {
     name: 'interactionCreate',
     async execute(interaction, client) {
         if (!interaction.guild) return;
 
         const { customId } = interaction;
-
-        // ═══════════════════════════════════════
-        // BOUTONS — ENTRÉE DANS UN GIVEAWAY
-        // ═══════════════════════════════════════
+        
         if (interaction.isButton() && customId === 'gw_enter') {
             const giveaway = gw.get(interaction.message.id);
             if (!giveaway) return interaction.reply({ content: '❌ Ce giveaway est introuvable.', ephemeral: true });
@@ -139,10 +131,7 @@ module.exports = {
             await interaction.followUp({ content: msg, ephemeral: true });
             return;
         }
-
-        // ═══════════════════════════════════════
-        // BOUTONS — WIZARD
-        // ═══════════════════════════════════════
+        
         if (interaction.isButton() && customId.startsWith('gw_set_')) {
             const draft = gw.getDraft(interaction.guild.id, interaction.user.id);
             if (!draft) return interaction.reply({ content: '❌ Aucun wizard de giveaway actif pour vous.', ephemeral: true });
@@ -234,9 +223,6 @@ module.exports = {
             return;
         }
 
-        // ═══════════════════════════════════════
-        // MODALS — WIZARD
-        // ═══════════════════════════════════════
         if (interaction.isModalSubmit()) {
             const draft = gw.getDraft(interaction.guild.id, interaction.user.id);
 
@@ -349,9 +335,6 @@ module.exports = {
             return;
         }
 
-        // ═══════════════════════════════════════
-        // PANNEAU — BOUTONS ET SELECT
-        // ═══════════════════════════════════════
         if (interaction.isButton() && customId === 'gw_panel_create') {
             const gcfg = guildConfig.getAll(interaction.guild.id);
             const existing = gw.getDraft(interaction.guild.id, interaction.user.id);
@@ -385,9 +368,6 @@ module.exports = {
             return;
         }
 
-        // ═══════════════════════════════════════
-        // SELECT — PANNEAU : GÉRER UN GIVEAWAY
-        // ═══════════════════════════════════════
         if (interaction.isStringSelectMenu() && customId === 'gw_panel_select') {
             const msgId = interaction.values[0];
             const giveaway = gw.get(msgId);
@@ -428,9 +408,6 @@ module.exports = {
             return;
         }
 
-        // ═══════════════════════════════════════
-        // BOUTONS GESTION — END / REROLL / DELETE
-        // ═══════════════════════════════════════
         if (interaction.isButton() && customId.startsWith('gw_manage_')) {
             if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
                 const gcfg = guildConfig.getAll(interaction.guild.id);
