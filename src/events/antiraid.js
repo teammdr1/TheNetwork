@@ -1,8 +1,5 @@
 const guildConfig = require('../utils/guildConfig');
-
-// Suivi du spam par message: guildId:userId → { count, resetTimer }
 const spamTracker = new Map();
-// Suivi des violations: guildId:userId → { count }
 const violations = new Map();
 
 function isWhitelisted(member, cfg) {
@@ -59,8 +56,7 @@ module.exports = {
         const spamInterval = arCfg.spamInterval || 2000;
 
         const key = `${message.guild.id}:${message.author.id}`;
-
-        // Suivi des messages dans la fenêtre de temps
+        
         let userData = spamTracker.get(key);
         if (!userData) {
             userData = { count: 1 };
@@ -72,14 +68,12 @@ module.exports = {
         userData.count++;
         if (userData.count <= spamLimit) return;
 
-        // Seuil de spam atteint → comptabiliser la violation
         spamTracker.delete(key);
 
         let userViolations = violations.get(key) || { count: 0 };
         userViolations.count++;
         violations.set(key, userViolations);
 
-        // Réinitialise les violations après 1 heure
         setTimeout(() => violations.delete(key), 60 * 60 * 1000);
 
         try {
