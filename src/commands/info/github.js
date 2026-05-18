@@ -20,9 +20,6 @@ module.exports = {
         }
 
         try {
-            // ─────────────────────────────
-            // USER FETCH
-            // ─────────────────────────────
             const res = await fetch(`https://api.github.com/users/${username}`);
 
             if (!res.ok) {
@@ -30,10 +27,7 @@ module.exports = {
             }
 
             const data = await res.json();
-
-            // ─────────────────────────────
-            // ORGS FETCH
-            // ─────────────────────────────
+            
             let orgsList = "Aucune";
 
             try {
@@ -49,13 +43,9 @@ module.exports = {
                 orgsList = "Aucune";
             }
 
-            // ─────────────────────────────
-            // CONTAINER V2
-            // ─────────────────────────────
             const container = new ContainerBuilder()
                 .setAccentColor(0x2B3137);
 
-            // HEADER
             container.addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
                     `## 🧑‍💻 GitHub — ${data.login}`
@@ -66,7 +56,6 @@ module.exports = {
                 new SeparatorBuilder().setDivider(true)
             );
 
-            // INFO
             container.addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
                     `👤 **Utilisateur :** ${data.login}\n` +
@@ -81,7 +70,6 @@ module.exports = {
                 new SeparatorBuilder().setSpacing(1)
             );
 
-            // BIO
             container.addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
                     `### 📝 Bio\n${data.bio || "Aucune"}`
@@ -92,7 +80,6 @@ module.exports = {
                 new SeparatorBuilder().setDivider(true)
             );
 
-            // STATS
             container.addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
                     `### 📊 Stats\n` +
@@ -106,7 +93,6 @@ module.exports = {
                 new SeparatorBuilder().setSpacing(1)
             );
 
-            // DATES
             container.addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
                     `### 📅 Dates\n` +
@@ -119,16 +105,13 @@ module.exports = {
                 new SeparatorBuilder().setDivider(true)
             );
 
-            // FOOTER
+
             container.addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
                     `-# 🔗 ${data.html_url}`
                 )
             );
 
-            // ─────────────────────────────
-            // BUTTONS
-            // ─────────────────────────────
             const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
                     .setLabel("🔗 GitHub")
